@@ -26,18 +26,18 @@
     '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;padding-top:max(16px,env(safe-area-inset-top));border-bottom:1px solid rgba(255,255,255,0.07);background:rgba(10,10,15,0.97);backdrop-filter:blur(12px);flex-shrink:0;">'
     + '<div style="font-size:20px;font-weight:800;letter-spacing:-0.5px;color:#f0f0f5;">Swipe<span style="color:#ff3e6c;">r</span></div>'
     + '<div id="__sw_stats" style="font-family:\'DM Mono\',monospace;font-size:11px;background:#111118;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:5px 12px;display:flex;gap:10px;">'
-    +   '<span id="__sw_kept" style="color:#00e5a0;">0 ✓</span>'
-    +   '<span id="__sw_cut" style="color:#ff3e6c;">0 ✗</span>'
-    +   '<span id="__sw_rem" style="color:#6b6b80;">…</span>'
+    +   '<span id="__sw_kept" style="color:#00e5a0;">0 \u2713</span>'
+    +   '<span id="__sw_cut" style="color:#ff3e6c;">0 \u2717</span>'
+    +   '<span id="__sw_rem" style="color:#6b6b80;">...</span>'
     + '</div>'
-    + '<button id="__sw_exit" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#6b6b80;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">✕</button>'
+    + '<button id="__sw_exit" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#6b6b80;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">\u2715</button>'
     + '</div>'
     + '<div id="__sw_ratewarn" style="display:none;background:rgba(255,62,108,0.06);border:1px solid rgba(255,62,108,0.2);border-radius:10px;padding:9px 14px;font-family:\'DM Mono\',monospace;font-size:11px;color:rgba(255,62,108,0.9);text-align:center;margin:8px 16px 0;flex-shrink:0;"></div>'
     + '<div id="__sw_cardarea" style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:16px 16px 0;"></div>'
     + '<div style="display:flex;justify-content:center;align-items:center;gap:24px;padding:16px 24px;padding-bottom:max(20px,env(safe-area-inset-bottom));flex-shrink:0;">'
-    +   '<button id="__sw_undo" style="width:48px;height:48px;border-radius:50%;background:#1a1a24;border:1px solid rgba(255,255,255,0.07);font-size:18px;cursor:pointer;color:white;display:flex;align-items:center;justify-content:center;">↩</button>'
-    +   '<button id="__sw_btn_unfollow" style="width:64px;height:64px;border-radius:50%;background:#ff3e6c;border:none;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(255,62,108,0.4);">✗</button>'
-    +   '<button id="__sw_btn_keep" style="width:64px;height:64px;border-radius:50%;background:#00e5a0;border:none;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(0,229,160,0.3);">✓</button>'
+    +   '<button id="__sw_undo" style="width:48px;height:48px;border-radius:50%;background:#1a1a24;border:1px solid rgba(255,255,255,0.07);font-size:18px;cursor:pointer;color:white;display:flex;align-items:center;justify-content:center;">\u21a9</button>'
+    +   '<button id="__sw_btn_unfollow" style="width:64px;height:64px;border-radius:50%;background:#ff3e6c;border:none;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(255,62,108,0.4);">\u2717</button>'
+    +   '<button id="__sw_btn_keep" style="width:64px;height:64px;border-radius:50%;background:#00e5a0;border:none;font-size:26px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 24px rgba(0,229,160,0.3);">\u2713</button>'
     + '</div>';
 
   document.body.appendChild(overlay);
@@ -47,7 +47,7 @@
   document.getElementById('__sw_btn_unfollow').onclick = function(){ triggerSwipe('left'); };
   document.getElementById('__sw_btn_keep').onclick = function(){ triggerSwipe('right'); };
 
-  showLoading('Finding your account…');
+  showLoading('Finding your account...');
   fetchUserId();
 
   function showLoading(msg){
@@ -60,7 +60,7 @@
   function showError(msg){
     document.getElementById('__sw_cardarea').innerHTML =
       '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;color:#ff3e6c;font-family:\'DM Mono\',monospace;font-size:12px;text-align:center;padding:24px;">'
-      + '<div style="font-size:32px;">⚠️</div><div>' + esc(msg) + '</div>'
+      + '<div style="font-size:32px;">\u26a0</div><div>' + esc(msg) + '</div>'
       + '<div style="color:#6b6b80;font-size:11px;">Make sure you\'re on instagram.com and logged in.</div></div>';
   }
 
@@ -107,7 +107,7 @@
 
   function fetchFollowing(){
     if(!hasMore){ renderCurrent(); return; }
-    showLoading('Loading following… (' + following.length + ' loaded)');
+    showLoading('Loading following... (' + following.length + ' loaded)');
     var url = 'https://www.instagram.com/api/v1/friendships/' + userId + '/following/?count=50' + (cursor ? '&max_id='+cursor : '');
     fetch(url, {
       credentials:'include',
@@ -131,7 +131,7 @@
     var area = document.getElementById('__sw_cardarea');
     if(currentIdx >= following.length){
       if(hasMore){ fetchFollowing(); return; }
-      area.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;color:#6b6b80;font-family:\'DM Mono\',monospace;font-size:13px;text-align:center;"><div style="font-size:52px;margin-bottom:4px;">🎉</div><div style="color:#f0f0f5;font-size:16px;font-weight:700;">All done!</div><div>Unfollowed ' + stats.cut + ' · Kept ' + stats.kept + '</div></div>';
+      area.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:12px;color:#6b6b80;font-family:\'DM Mono\',monospace;font-size:13px;text-align:center;"><div style="font-size:52px;margin-bottom:4px;">\uD83C\uDF89</div><div style="color:#f0f0f5;font-size:16px;font-weight:700;">All done!</div><div>Unfollowed ' + stats.cut + ' \u00b7 Kept ' + stats.kept + '</div></div>';
       return;
     }
     area.innerHTML = '';
@@ -164,7 +164,7 @@
 
     var mediaHTML = '';
     for(var i=0;i<6;i++){
-      mediaHTML += '<div style="aspect-ratio:1;background:#1a1a24;display:flex;align-items:center;justify-content:center;color:#6b6b80;font-size:14px;" class="__sw_imgslot">📷</div>';
+      mediaHTML += '<div style="aspect-ratio:1;background:#1a1a24;display:flex;align-items:center;justify-content:center;color:#6b6b80;font-size:14px;" class="__sw_imgslot">\uD83D\uDCF7</div>';
     }
 
     card.innerHTML =
@@ -206,7 +206,7 @@
           var img = document.createElement('img');
           img.src = url;
           img.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;display:block;';
-          img.onerror = function(){ this.parentNode.innerHTML='📷'; };
+          img.onerror = function(){ this.parentNode.innerHTML='\uD83D\uDCF7'; };
           slots[i].innerHTML='';
           slots[i].appendChild(img);
         }
@@ -287,7 +287,7 @@
       }
       if(currentIdx>=following.length){
         if(hasMore) fetchFollowing();
-        else area.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;gap:12px;color:#6b6b80;font-family:\'DM Mono\',monospace;font-size:13px;text-align:center;"><div style="font-size:52px;">🎉</div><div style="color:#f0f0f5;font-size:16px;font-weight:700;">All done!</div><div>Unfollowed '+stats.cut+' · Kept '+stats.kept+'</div></div>';
+        else area.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;gap:12px;color:#6b6b80;font-family:\'DM Mono\',monospace;font-size:13px;text-align:center;"><div style="font-size:52px;">\uD83C\uDF89</div><div style="color:#f0f0f5;font-size:16px;font-weight:700;">All done!</div><div>Unfollowed '+stats.cut+' \u00b7 Kept '+stats.kept+'</div></div>';
       }
     }, 380);
   }
@@ -323,7 +323,7 @@
     if(stats.cut>0 && stats.cut%50===0){
       var warn=document.getElementById('__sw_ratewarn');
       warn.style.display='block';
-      warn.textContent='⚠️ '+stats.cut+' unfollows done — pausing 30s to protect your account…';
+      warn.textContent='\u26a0 '+stats.cut+' unfollows done -- pausing 30s to protect your account...';
       delay=30000;
       setTimeout(function(){ warn.style.display='none'; }, 30000);
     }
@@ -340,8 +340,11 @@
 
   function updateStats(){
     var k=document.getElementById('__sw_kept'),c=document.getElementById('__sw_cut'),r=document.getElementById('__sw_rem');
-    if(k) k.textContent=stats.kept+' ✓';
-    if(c) c.textContent=stats.cut+' ✗';
+    if(k) k.textContent=stats.kept+' \u2713';
+    if(c) c.textContent=stats.cut+' \u2717';
     if(r) r.textContent=(following.length-currentIdx)+' left';
   }
 })();
+
+// Required by Apple Shortcuts "Run JavaScript on Webpage" action
+completion(null);

@@ -624,29 +624,30 @@
   <div class="step-card">
     <div class="step-header">
       <div class="step-num">2</div>
-      <div class="step-title">Create a Shortcut</div>
+      <div class="step-title">Create the Shortcut (no pasting!)</div>
     </div>
     <div class="step-body">
-      Open the <b>Shortcuts</b> app → tap <b>+</b> → tap <b>Add Action</b> → search for <b>"Run JavaScript on Webpage"</b> → tap it.<br><br>
-      In the code box, <b>delete all placeholder text</b>, then tap the button below to copy the Swiper script and paste it in.
+      Open <b>Shortcuts</b> → tap <b>+</b> → name it <b>Swiper</b>.<br><br>
+      <b>Add Action 1:</b> search <b>"Get Contents of URL"</b> → tap it → tap the URL field and type your GitHub Pages URL for <b>swiper-shortcut.js</b> (e.g. <b>https://yourusername.github.io/swiper/swiper-shortcut.js</b>).<br><br>
+      <b>Add Action 2:</b> search <b>"Run JavaScript on Webpage"</b> → tap it → tap the script field → tap <b>Variable</b> → choose <b>Contents of URL</b> from Action 1.<br><br>
+      Tap <b>Done</b>. That's it — no script pasting ever needed.
     </div>
-    <button class="btn-primary" onclick="copyScript()" style="margin-top:10px;">📋 Copy Swiper Script</button>
     <div class="warn-box" style="margin-top:10px;">
-      Name the shortcut <b>"Swiper"</b> and tap Done to save it.
+      The Shortcut fetches the latest script live each time. If the script ever updates, you get it automatically.
     </div>
   </div>
 
   <div class="step-card">
     <div class="step-header">
       <div class="step-num">3</div>
-      <div class="step-title">Run it on instagram.com</div>
+      <div class="step-title">Add to Share Sheet &amp; run</div>
     </div>
     <div class="step-body">
-      Go to <b>instagram.com</b> in Safari and stay logged in. Tap the <b>Share button</b> (box with arrow) → scroll down to find <b>Swiper</b> in your shortcuts list → tap it.<br><br>
-      The Swiper UI will launch on top of Instagram instantly.
+      Go to <b>instagram.com</b> in Safari (logged in). Tap <b>Share</b> → <b>Edit Actions</b> → find Swiper → tap <b>+</b> → Done.<br><br>
+      Now tap Share → tap <b>Swiper</b>. The UI launches on top of Instagram.
     </div>
     <div class="warn-box">
-      ⚠️ Instagram rate-limits unfollows. This app enforces a <b>1–2 second delay</b> between each unfollow and auto-pauses every 50. Stay under ~150/hour.
+      Instagram rate-limits unfollows. This app enforces a 1-2 second delay and auto-pauses every 50 unfollows. Stay under ~150/hour.
     </div>
   </div>
 
@@ -1395,7 +1396,7 @@ function restartSession() {
 }
 
 function showInstructions() {
-  alert('Setup Steps:\n\n1. Open instagram.com in Safari and log in.\n\n2. Open the Shortcuts app → tap + → Add Action → search "Run JavaScript on Webpage" → tap it.\n\n3. Delete the placeholder code in the box. Tap "Copy Swiper Script" on this page, then paste it in. Name the shortcut "Swiper" → Done.\n\n4. Go to instagram.com in Safari. Tap the Share button (box with arrow) → scroll down to find "Swiper" → tap it.\n\n5. Swiper launches on top of Instagram. Swipe LEFT to unfollow, RIGHT to keep.\n\nTip: Keep sessions under ~150 unfollows/hour to stay safe.');
+  alert('Setup Steps:\n\n1. Host both files on GitHub Pages (instaswipe.html + swiper-shortcut.js).\n\n2. Open Shortcuts -> tap + -> name it Swiper.\n\n3. Add Action 1: Get Contents of URL -> enter your GitHub Pages URL for swiper-shortcut.js.\n\n4. Add Action 2: Run JavaScript on Webpage -> tap the script field -> tap Variable -> select Contents of URL.\n\n5. Tap Done.\n\n6. In Safari on instagram.com tap Share -> Edit Actions -> find Swiper -> tap + -> Done.\n\n7. Tap Share -> Swiper to launch. No pasting ever needed!');
 }
 
 function showScreen(id) {
