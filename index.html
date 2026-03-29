@@ -624,15 +624,16 @@
   <div class="step-card">
     <div class="step-header">
       <div class="step-num">2</div>
-      <div class="step-title">Save the bookmarklet</div>
+      <div class="step-title">Create a Shortcut</div>
     </div>
     <div class="step-body">
-      Tap the button below to copy the Swiper script. Then in Safari, <b>bookmark any page</b> (tap Share → Add Bookmark). Name it <b>"Swiper"</b>. Then edit that bookmark and <b>replace the URL with the copied script</b>.
+      Open the <b>Shortcuts</b> app → tap <b>+</b> → tap <b>Add Action</b> → search for <b>"Run JavaScript on Webpage"</b> → tap it.<br><br>
+      In the code box, <b>delete all placeholder text</b>, then tap the button below to copy the Swiper script and paste it in.
     </div>
-    <div class="code-block" id="bookmarklet-display" style="max-height:80px;overflow:hidden;font-size:10px;">
-      Tap "Copy Bookmarklet" below to generate it...
+    <button class="btn-primary" onclick="copyScript()" style="margin-top:10px;">📋 Copy Swiper Script</button>
+    <div class="warn-box" style="margin-top:10px;">
+      Name the shortcut <b>"Swiper"</b> and tap Done to save it.
     </div>
-    <button class="btn-primary" onclick="copyBookmarklet()" style="margin-top:10px;">📋 Copy Bookmarklet</button>
   </div>
 
   <div class="step-card">
@@ -641,10 +642,11 @@
       <div class="step-title">Run it on instagram.com</div>
     </div>
     <div class="step-body">
-      Go to <b>instagram.com</b> in Safari (while logged in). Tap the address bar, type <b>"Swiper"</b> and tap your bookmark. The swipe UI will launch on top of Instagram.
+      Go to <b>instagram.com</b> in Safari and stay logged in. Tap the <b>Share button</b> (box with arrow) → scroll down to find <b>Swiper</b> in your shortcuts list → tap it.<br><br>
+      The Swiper UI will launch on top of Instagram instantly.
     </div>
     <div class="warn-box">
-      ⚠️ Instagram rate-limits unfollows. To stay safe, this app enforces a <b>1–2 second delay</b> between each unfollow. Avoid doing more than ~150 unfollows per hour.
+      ⚠️ Instagram rate-limits unfollows. This app enforces a <b>1–2 second delay</b> between each unfollow and auto-pauses every 50. Stay under ~150/hour.
     </div>
   </div>
 
@@ -662,7 +664,7 @@
   </div>
 
   <button class="btn-primary" onclick="showDemoMode()" style="max-width:400px;">▶ Preview Demo Mode</button>
-  <button class="btn-primary btn-secondary" onclick="showInstructions()" style="max-width:400px;">📖 Detailed Setup Guide</button>
+  <button class="btn-primary btn-secondary" onclick="showInstructions()" style="max-width:400px;">📖 Step-by-Step Setup Guide</button>
   <div style="height:32px;"></div>
 </div>
 
@@ -1143,48 +1145,51 @@ function getBookmarkletCode() {
 // SETUP PAGE LOGIC
 // ══════════════════════════════════════════════════════
 
-function copyBookmarklet() {
-  const code = getBookmarkletCode();
-  document.getElementById('bookmarklet-display').textContent = code.substring(0, 120) + '…';
-
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(code).then(() => {
-      showCopySuccess();
-    }).catch(() => {
-      fallbackCopy(code);
+function copyScript() {
+  // Fetch the standalone JS file and copy it to clipboard
+  fetch('swiper-shortcut.js')
+    .then(r => r.text())
+    .then(code => doCopy(code))
+    .catch(() => {
+      // Fallback: the script is also embedded here as a string
+      doCopy(SWIPER_SCRIPT);
     });
+}
+
+function doCopy(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(showCopySuccess).catch(() => fallbackCopy(text));
   } else {
-    fallbackCopy(code);
+    fallbackCopy(text);
   }
 }
 
 function fallbackCopy(text) {
   const ta = document.createElement('textarea');
   ta.value = text;
-  ta.style.position = 'fixed';
-  ta.style.opacity = '0';
+  ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0;';
   document.body.appendChild(ta);
-  ta.focus();
-  ta.select();
-  try {
-    document.execCommand('copy');
-    showCopySuccess();
-  } catch(e) {
-    alert('Could not auto-copy. Here is the bookmarklet code — please copy it manually:\n\n' + text.substring(0, 200) + '...');
-  }
+  ta.focus(); ta.select();
+  try { document.execCommand('copy'); showCopySuccess(); }
+  catch(e) { alert('Auto-copy failed. Please open swiper-shortcut.js and copy it manually.'); }
   document.body.removeChild(ta);
 }
 
 function showCopySuccess() {
-  // Show a toast
+  const existing = document.getElementById('__toast');
+  if (existing) existing.remove();
   const toast = document.createElement('div');
-  toast.textContent = '✓ Bookmarklet copied!';
-  toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#00e5a0;color:#0a0a0f;padding:12px 24px;border-radius:40px;font-weight:700;font-size:14px;z-index:9999;animation:fadeOut 2s ease forwards 1s;';
-  const style = document.createElement('style');
-  style.textContent = '@keyframes fadeOut { to { opacity:0; transform:translateX(-50%) translateY(10px); } }';
-  document.head.appendChild(style);
+  toast.id = '__toast';
+  toast.textContent = '✓ Script copied! Paste it into the Shortcut.';
+  toast.style.cssText = 'position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:#00e5a0;color:#0a0a0f;padding:12px 20px;border-radius:40px;font-weight:700;font-size:13px;z-index:9999;white-space:nowrap;animation:fadeOut 2s ease forwards 1.5s;';
+  if (!document.getElementById('__fadeout_style')) {
+    const s = document.createElement('style');
+    s.id = '__fadeout_style';
+    s.textContent = '@keyframes fadeOut{to{opacity:0;transform:translateX(-50%) translateY(8px)}}';
+    document.head.appendChild(s);
+  }
   document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3100);
+  setTimeout(() => toast.remove(), 3600);
 }
 
 // ══════════════════════════════════════════════════════
@@ -1390,7 +1395,7 @@ function restartSession() {
 }
 
 function showInstructions() {
-  alert('Detailed Setup:\n\n1. Open instagram.com in Safari and log in.\n\n2. On this page, tap "Copy Bookmarklet".\n\n3. In Safari, navigate to any webpage and tap the Share button (box with arrow) → Add Bookmark. Name it "Swiper" and save.\n\n4. Tap the bookmark icon in Safari → find "Swiper" → long-press → Edit. In the URL/Address field, delete the existing URL and paste the bookmarklet code you copied.\n\n5. Go to instagram.com (while logged in). Tap the address bar at the top. Type "Swiper" and your bookmark will appear — tap it.\n\n6. The swipe UI will launch over Instagram. Swipe left to unfollow, right to keep!\n\nNote: Keep sessions under ~150 unfollows/hour to avoid Instagram\'s rate limits.');
+  alert('Setup Steps:\n\n1. Open instagram.com in Safari and log in.\n\n2. Open the Shortcuts app → tap + → Add Action → search "Run JavaScript on Webpage" → tap it.\n\n3. Delete the placeholder code in the box. Tap "Copy Swiper Script" on this page, then paste it in. Name the shortcut "Swiper" → Done.\n\n4. Go to instagram.com in Safari. Tap the Share button (box with arrow) → scroll down to find "Swiper" → tap it.\n\n5. Swiper launches on top of Instagram. Swipe LEFT to unfollow, RIGHT to keep.\n\nTip: Keep sessions under ~150 unfollows/hour to stay safe.');
 }
 
 function showScreen(id) {
@@ -1398,11 +1403,8 @@ function showScreen(id) {
   document.getElementById(id).classList.remove('hidden');
 }
 
-// Generate bookmarklet on load
-window.addEventListener('DOMContentLoaded', () => {
-  // Pre-generate to warm up
-  getBookmarkletCode();
-});
+
+
 </script>
 </body>
 </html>
