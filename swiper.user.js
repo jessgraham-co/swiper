@@ -22,6 +22,7 @@
   var unfollowQueue = [];
   var processingQueue = false;
   var isSorted = false;
+  var totalFollowing = null;
 
   var style = document.createElement('style');
   style.textContent = '@import url("https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap"); @keyframes __sw_spin{to{transform:rotate(360deg)}}';
@@ -43,6 +44,11 @@
     +   '</div>'
     +   '<button id="__sw_exit" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#6b6b80;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">\u2715</button>'
     + '</div>'
+    + '</div>'
+    + '<div id="__sw_followbar" style="display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 20px;border-bottom:1px solid rgba(255,255,255,0.04);background:#0d0d14;flex-shrink:0;">'
+    +   '<span style="font-family:DM Mono,monospace;font-size:11px;color:#6b6b80;">FOLLOWING</span>'
+    +   '<span id="__sw_total" style="font-family:DM Mono,monospace;font-size:22px;font-weight:700;color:#f0f0f5;letter-spacing:-1px;">...</span>'
+    +   '<span id="__sw_delta" style="font-family:DM Mono,monospace;font-size:11px;color:#ff3e6c;min-width:40px;"></span>'
     + '</div>'
     + '<div id="__sw_ratewarn" style="display:none;background:rgba(255,62,108,0.06);border:1px solid rgba(255,62,108,0.2);border-radius:10px;padding:9px 14px;font-family:\'DM Mono\',monospace;font-size:11px;color:rgba(255,62,108,0.9);text-align:center;margin:8px 16px 0;flex-shrink:0;"></div>'
     + '<div id="__sw_cardarea" style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:16px 16px 0;"></div>'
@@ -107,7 +113,7 @@
       if(igData) {
         var str = JSON.stringify(igData);
         var m = str.match(/"pk":"(\d+)"/);
-        if(m){ userId = m[1]; fetchFollowing(); return; }
+        if(m){ userId = m[1]; startSession(); return; }
       }
     } catch(e){}
 
@@ -121,14 +127,14 @@
         var m3 = t.match(/"ds_user_id"\s*:\s*"(\d+)"/);
         var m4 = t.match(/\\"ds_user_id\\":\\"(\d+)\\"/);
         var found = (m1&&m1[1])||(m2&&m2[1])||(m3&&m3[1])||(m4&&m4[1]);
-        if(found){ userId = found; fetchFollowing(); return; }
+        if(found){ userId = found; startSession(); return; }
       }
     } catch(e){}
 
     // Method 3: read ds_user_id from cookies directly
     try {
       var cookieMatch = document.cookie.match(/ds_user_id=(\d+)/);
-      if(cookieMatch){ userId = cookieMatch[1]; fetchFollowing(); return; }
+      if(cookieMatch){ userId = cookieMatch[1]; startSession(); return; }
     } catch(e){}
 
     // Method 4: hit the /api/v1/accounts/current_user/ endpoint
@@ -145,7 +151,7 @@
     .then(function(d){
       userId = d.user && (d.user.pk || d.user.id || d.user.pk_id);
       if(!userId) throw new Error('no id');
-      fetchFollowing();
+      startSession();
     })
     .catch(function(){
       // Method 5: try the graphql whoami endpoint
@@ -163,7 +169,7 @@
       .then(function(r){ return r.json(); })
       .then(function(d){
         var uid = d && d.data && d.data.xdt_api__v1__accounts__current_user__get && d.data.xdt_api__v1__accounts__current_user__get.user && d.data.xdt_api__v1__accounts__current_user__get.user.pk;
-        if(uid){ userId = uid; fetchFollowing(); return; }
+        if(uid){ userId = uid; startSession(); return; }
         throw new Error('no id from graphql');
       })
       .catch(function(){
@@ -179,7 +185,7 @@
             .then(function(r){ return r.json(); })
             .then(function(d){
               var u = d.data && d.data.user;
-              if(u && u.id){ userId = u.id; fetchFollowing(); return; }
+              if(u && u.id){ userId = u.id; startSession(); return; }
               showError('Logged in but could not get user ID. Try visiting instagram.com/YOUR_USERNAME directly.');
             })
             .catch(function(){ showError('Could not get user ID. Make sure you are logged in to instagram.com.'); });
@@ -189,6 +195,46 @@
         showError('Could not get user ID. Please navigate to instagram.com/YOUR_USERNAME and try again.');
       });
     });
+  }
+
+  function startSession(){
+    // Fetch the user's total following count from their profile
+    fetch('https://www.instagram.com/api/v1/friendships/'+userId+'/following/?count=1', {
+      credentials:'include',
+      headers:{'X-CSRFToken':getCsrf(),'X-IG-App-ID':'936619743392459','X-Requested-With':'XMLHttpRequest'}
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      // try to get total count from user info endpoint
+      return fetch('https://www.instagram.com/api/v1/users/'+userId+'/info/', {
+        credentials:'include',
+        headers:{'X-CSRFToken':getCsrf(),'X-IG-App-ID':'936619743392459','X-Requested-With':'XMLHttpRequest'}
+      });
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var u = d.user;
+      if(u && u.following_count){ totalFollowing = u.following_count; }
+      else if(u && u.friendship_counts){ totalFollowing = u.friendship_counts.following; }
+      updateTotalCounter();
+    })
+    .catch(function(){})
+    .finally(function(){ fetchFollowing(); });
+  }
+
+  function updateTotalCounter(){
+    var el = document.getElementById('__sw_total');
+    var deltaEl = document.getElementById('__sw_delta');
+    if(!el) return;
+    if(totalFollowing !== null){
+      var current = totalFollowing - stats.cut;
+      el.textContent = current.toLocaleString();
+      if(stats.cut > 0){
+        deltaEl.textContent = '-' + stats.cut;
+      }
+    } else {
+      el.textContent = '...';
+    }
   }
 
   function fetchFollowing(){
@@ -379,6 +425,7 @@
     history.push({idx:currentIdx,action:dir,username:username,pk:pk});
     if(dir==='left'){
       stats.cut++;
+      updateTotalCounter();
       card.style.transition='transform 0.35s ease-in,opacity 0.35s ease-in';
       card.style.transform='translateX(-130%) rotate(-25deg)'; card.style.opacity='0';
       queueUnfollow(pk, username);
@@ -416,6 +463,7 @@
     var last=history.pop();
     if(last.action==='left'){
       stats.cut=Math.max(0,stats.cut-1);
+      updateTotalCounter();
       fetch('https://www.instagram.com/api/v1/friendships/create/'+last.pk+'/', {
         method:'POST', credentials:'include',
         headers:{'X-CSRFToken':getCsrf(),'X-IG-App-ID':'936619743392459','Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},
