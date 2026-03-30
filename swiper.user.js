@@ -21,6 +21,7 @@
   var DELAY_MS = 1500;
   var unfollowQueue = [];
   var processingQueue = false;
+  var isSorted = false;
 
   var style = document.createElement('style');
   style.textContent = '@import url("https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Mono:wght@400;500&display=swap"); @keyframes __sw_spin{to{transform:rotate(360deg)}}';
@@ -33,12 +34,15 @@
   overlay.innerHTML =
     '<div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;padding-top:max(16px,env(safe-area-inset-top));border-bottom:1px solid rgba(255,255,255,0.07);background:rgba(10,10,15,0.97);backdrop-filter:blur(12px);flex-shrink:0;">'
     + '<div style="font-size:20px;font-weight:800;letter-spacing:-0.5px;color:#f0f0f5;">Swipe<span style="color:#ff3e6c;">r</span></div>'
-    + '<div id="__sw_stats" style="font-family:\'DM Mono\',monospace;font-size:11px;background:#111118;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:5px 12px;display:flex;gap:10px;">'
-    +   '<span id="__sw_kept" style="color:#00e5a0;">0 \u2713</span>'
-    +   '<span id="__sw_cut" style="color:#ff3e6c;">0 \u2717</span>'
-    +   '<span id="__sw_rem" style="color:#6b6b80;">...</span>'
+    + '<div style="display:flex;align-items:center;gap:8px;">'
+    +   '<button id="__sw_sort" style="background:#1a1a24;border:1px solid rgba(255,255,255,0.07);color:#6b6b80;border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer;font-family:DM Mono,monospace;">A-Z</button>'
+    +   '<div id="__sw_stats" style="font-family:\'DM Mono\',monospace;font-size:11px;background:#111118;border:1px solid rgba(255,255,255,0.07);border-radius:20px;padding:5px 12px;display:flex;gap:10px;">'
+    +     '<span id="__sw_kept" style="color:#00e5a0;">0 \u2713</span>'
+    +     '<span id="__sw_cut" style="color:#ff3e6c;">0 \u2717</span>'
+    +     '<span id="__sw_rem" style="color:#6b6b80;">...</span>'
+    +   '</div>'
+    +   '<button id="__sw_exit" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#6b6b80;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">\u2715</button>'
     + '</div>'
-    + '<button id="__sw_exit" style="background:transparent;border:1px solid rgba(255,255,255,0.1);color:#6b6b80;border-radius:8px;padding:5px 10px;font-size:12px;cursor:pointer;">\u2715</button>'
     + '</div>'
     + '<div id="__sw_ratewarn" style="display:none;background:rgba(255,62,108,0.06);border:1px solid rgba(255,62,108,0.2);border-radius:10px;padding:9px 14px;font-family:\'DM Mono\',monospace;font-size:11px;color:rgba(255,62,108,0.9);text-align:center;margin:8px 16px 0;flex-shrink:0;"></div>'
     + '<div id="__sw_cardarea" style="flex:1;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;padding:16px 16px 0;"></div>'
@@ -54,6 +58,23 @@
   document.getElementById('__sw_undo').onclick = function(){ doUndo(); };
   document.getElementById('__sw_btn_unfollow').onclick = function(){ triggerSwipe('left'); };
   document.getElementById('__sw_btn_keep').onclick = function(){ triggerSwipe('right'); };
+  document.getElementById('__sw_sort').onclick = function(){
+    isSorted = !isSorted;
+    var btn = document.getElementById('__sw_sort');
+    if(isSorted){
+      following.sort(function(a,b){ return (a.username||'').localeCompare(b.username||''); });
+      btn.textContent = 'A-Z ON';
+      btn.style.color = '#00e5a0';
+      btn.style.borderColor = 'rgba(0,229,160,0.3)';
+    } else {
+      btn.textContent = 'A-Z';
+      btn.style.color = '#6b6b80';
+      btn.style.borderColor = 'rgba(255,255,255,0.07)';
+    }
+    currentIdx = 0;
+    history = [];
+    renderCurrent();
+  };
 
   showLoading('Finding your account...');
   fetchUserId();
@@ -183,6 +204,7 @@
       following = following.concat(d.users || []);
       cursor = d.next_max_id || null;
       hasMore = !!cursor;
+      if(isSorted){ following.sort(function(a,b){ return (a.username||'').localeCompare(b.username||''); }); }
       updateStats();
       renderCurrent();
     })
@@ -242,15 +264,16 @@
       + '<div style="flex:1;min-width:0;">'
       +   '<div style="font-size:16px;font-weight:700;letter-spacing:-0.3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#f0f0f5;">@'+esc(user.username)+'</div>'
       +   (fullname ? '<div style="font-size:13px;color:#6b6b80;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+esc(fullname)+'</div>' : '')
-      +   (followersStr ? '<div style="font-family:\'DM Mono\',monospace;font-size:11px;color:#6b6b80;margin-top:4px;">'+followersStr+'</div>' : '')
+      +   (followersStr ? '<div class="__sw_followers" style="font-family:\'DM Mono\',monospace;font-size:11px;color:#6b6b80;margin-top:4px;">'+followersStr+'</div>' : '<div class="__sw_followers" style="font-family:\'DM Mono\',monospace;font-size:11px;color:#6b6b80;margin-top:4px;"></div>')
       + '</div>'
       + '</div>'
-      + (bio ? '<div style="padding:0 16px 12px;font-size:13px;color:#9090a8;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;">'+esc(bio)+'</div>' : '')
+      + '<div id="__sw_bio_'+esc(user.username)+'" style="padding:0 16px 12px;font-size:13px;color:#9090a8;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:16px;">'+(bio ? esc(bio) : '<span style="color:#3a3a4a;font-family:DM Mono,monospace;font-size:11px;">loading bio...</span>')+'</div>'
       + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;">'+mediaHTML+'</div>'
       + '<div style="position:absolute;top:20px;left:16px;padding:5px 14px;border-radius:8px;font-size:20px;font-weight:800;letter-spacing:1px;opacity:0;color:#00e5a0;border:3px solid #00e5a0;transform:rotate(-15deg);text-transform:uppercase;" class="__sw_lbl_keep">KEEP</div>'
       + '<div style="position:absolute;top:20px;right:16px;padding:5px 14px;border-radius:8px;font-size:20px;font-weight:800;letter-spacing:1px;opacity:0;color:#ff3e6c;border:3px solid #ff3e6c;transform:rotate(15deg);text-transform:uppercase;" class="__sw_lbl_cut">BYE</div>';
 
     setTimeout(function(){ loadImages(card, user.pk || user.id); }, 80);
+    setTimeout(function(){ loadProfile(card, user.username); }, 80);
     return card;
   }
 
@@ -279,7 +302,38 @@
     }).catch(function(){});
   }
 
-  function esc(s){
+  function loadProfile(card, username){
+    fetch('https://www.instagram.com/api/v1/users/web_profile_info/?username='+username, {
+      credentials:'include',
+      headers:{'X-CSRFToken':getCsrf(),'X-IG-App-ID':'936619743392459','X-Requested-With':'XMLHttpRequest'}
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(d){
+      var u = d.data && d.data.user;
+      if(!u) return;
+      var bioEl = card.querySelector('#__sw_bio_'+username.replace(/[^a-zA-Z0-9_]/g,'_'));
+      // fallback selector if id has special chars
+      if(!bioEl) bioEl = card.querySelector('[id^="__sw_bio_"]');
+      if(bioEl){
+        bioEl.textContent = u.biography || '';
+        bioEl.style.color = '#9090a8';
+      }
+      // update follower count too
+      var metaEl = card.querySelector('.__sw_followers');
+      if(metaEl && u.edge_followed_by){
+        var count = u.edge_followed_by.count;
+        var str = count >= 1000000 ? (count/1000000).toFixed(1)+'M followers'
+          : count >= 1000 ? (count/1000).toFixed(1)+'K followers'
+          : count+' followers';
+        metaEl.textContent = str;
+      }
+    }).catch(function(){
+      var bioEl = card.querySelector('[id^="__sw_bio_"]');
+      if(bioEl) bioEl.textContent = '';
+    });
+  }
+
+
     return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
