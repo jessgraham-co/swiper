@@ -142,11 +142,25 @@ function swiperInit(){
   showLoading('Finding your account...');
   fetchUserId();
 
-  function showLoading(msg){
+  function showLoading(msg, loaded, total){
+    var pct = (total && loaded) ? Math.min(Math.round((loaded/total)*100), 99) : 0;
+    var barWidth = total ? pct+'%' : '0%';
+    var countLine = loaded !== undefined
+      ? '<div style="font-size:11px;color:#6b6b80;margin-top:2px;">' + loaded.toLocaleString() + (total ? ' / ' + total.toLocaleString() : '') + ' accounts</div>'
+      : '';
+    var barLine = total
+      ? '<div style="width:180px;height:3px;background:rgba(255,255,255,0.07);border-radius:2px;margin-top:12px;overflow:hidden;">'
+        + '<div style="height:100%;width:'+barWidth+';background:#ff3e6c;border-radius:2px;transition:width 0.3s ease;"></div>'
+        + '</div>'
+        + '<div style="font-size:10px;color:#6b6b80;margin-top:6px;font-family:DM Mono,monospace;">'+pct+'%</div>'
+      : '';
     document.getElementById('__sw_cardarea').innerHTML =
-      '<div style="display:flex;flex-direction:column;align-items:center;gap:16px;color:#6b6b80;font-family:\'DM Mono\',monospace;font-size:13px;text-align:center;padding:20px;">'
-      + '<div style="width:36px;height:36px;border:3px solid rgba(255,255,255,0.07);border-top-color:#ff3e6c;border-radius:50%;animation:__sw_spin 0.8s linear infinite;"></div>'
-      + '<div>' + msg + '</div></div>';
+      '<div style="display:flex;flex-direction:column;align-items:center;gap:8px;color:#6b6b80;font-family:DM Mono,monospace;font-size:12px;text-align:center;padding:24px;">'
+      + '<div style="width:36px;height:36px;border:3px solid rgba(255,255,255,0.07);border-top-color:#ff3e6c;border-radius:50%;animation:__sw_spin 0.8s linear infinite;margin-bottom:4px;"></div>'
+      + '<div style="color:#f0f0f5;font-size:13px;font-weight:600;">' + msg + '</div>'
+      + countLine
+      + barLine
+      + '</div>';
   }
 
   function showError(msg){
@@ -295,8 +309,8 @@ function swiperInit(){
   }
 
   function fetchAllFollowing(){
-    // Recursively fetch every batch until done, then sort and render
-    showLoading('Loading all accounts... (' + following.length + ' so far, please wait)');
+    var total = totalFollowing || null;
+    showLoading('Loading all accounts...', following.length, total);
     var url = 'https://www.instagram.com/api/v1/friendships/' + userId + '/following/?count=50' + (cursor ? '&max_id='+cursor : '');
     fetch(url, {
       credentials:'include',
@@ -338,7 +352,7 @@ function swiperInit(){
 
   function fetchFollowing(){
     if(!hasMore){ renderCurrent(); return; }
-    showLoading('Loading following... (' + following.length + ' loaded)');
+    showLoading('Loading accounts...', following.length, totalFollowing || null);
     var url = 'https://www.instagram.com/api/v1/friendships/' + userId + '/following/?count=50' + (cursor ? '&max_id='+cursor : '');
     fetch(url, {
       credentials:'include',
@@ -560,17 +574,11 @@ function swiperInit(){
     currentIdx++; updateStats();
     setTimeout(function(){
       card.remove();
-      // Find next undecided user for background card
-      var nextUndecided = currentIdx + 1;
-      while(nextUndecided < following.length && alreadyDecided(following[nextUndecided].username)){
-        nextUndecided++;
-      }
-      if(nextUndecided < following.length && !area.querySelector('[style*="scale(0.94)"]')){
-        area.insertBefore(buildCard(following[nextUndecided],false), area.firstChild);
-      }
-      if(currentIdx>=following.length){
+      if(currentIdx >= following.length){
         if(hasMore) fetchFollowing();
         else area.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;gap:12px;color:#6b6b80;font-family:\'DM Mono\',monospace;font-size:13px;text-align:center;"><div style="font-size:52px;">\uD83C\uDF89</div><div style="color:#f0f0f5;font-size:16px;font-weight:700;">All done!</div><div>Unfollowed '+stats.cut+' \u00b7 Kept '+stats.kept+'</div></div>';
+      } else {
+        renderCurrent();
       }
     }, 380);
   }
