@@ -429,7 +429,7 @@ function swiperInit(){
       '<div style="padding:16px;display:flex;gap:12px;align-items:flex-start;">'
       + '<div style="width:54px;height:54px;border-radius:50%;overflow:hidden;flex-shrink:0;background:#1a1a24;border:2px solid rgba(255,255,255,0.07);">'
       + (avatar
-          ? '<img src="'+avatar+'" style="width:100%;height:100%;object-fit:cover;" crossorigin="anonymous" onerror="this.outerHTML=\'<div style=width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#6b6b80;background:#1a1a24>\'+\''+initials+'\'+\'</div>\';">'
+          ? '<img src="'+avatar+'" style="width:100%;height:100%;object-fit:cover;" onerror="this.outerHTML=\'<div style=width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#6b6b80;background:#1a1a24>\'+\''+initials+'\'+\'</div>\';">'
           : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:#6b6b80;">'+initials+'</div>')
       + '</div>'
       + '<div style="flex:1;min-width:0;">'
@@ -438,69 +438,193 @@ function swiperInit(){
       +   (followersStr ? '<div class="__sw_followers" style="font-family:\'DM Mono\',monospace;font-size:11px;color:#6b6b80;margin-top:4px;">'+followersStr+'</div>' : '<div class="__sw_followers" style="font-family:\'DM Mono\',monospace;font-size:11px;color:#6b6b80;margin-top:4px;"></div>')
       + '</div>'
       + '</div>'
-      + '<div id="__sw_bio_'+esc(user.username)+'" style="padding:0 16px 12px;font-size:13px;color:#9090a8;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:16px;">'+(bio ? esc(bio) : '<span style="color:#3a3a4a;font-family:DM Mono,monospace;font-size:11px;">loading bio...</span>')+'</div>'
-      + '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;">'+mediaHTML+'</div>'
+      + '<div class="__sw_bio" style="padding:0 16px 12px;font-size:13px;color:#9090a8;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;min-height:16px;">'+(bio ? esc(bio) : '<span style="color:#3a3a4a;font-family:DM Mono,monospace;font-size:11px;">loading bio...</span>')+'</div>'
+      + '<div class="__sw_grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:2px;">'+mediaHTML+'</div>'
       + '<div style="position:absolute;top:20px;left:16px;padding:5px 14px;border-radius:8px;font-size:20px;font-weight:800;letter-spacing:1px;opacity:0;color:#00e5a0;border:3px solid #00e5a0;transform:rotate(-15deg);text-transform:uppercase;" class="__sw_lbl_keep">KEEP</div>'
       + '<div style="position:absolute;top:20px;right:16px;padding:5px 14px;border-radius:8px;font-size:20px;font-weight:800;letter-spacing:1px;opacity:0;color:#ff3e6c;border:3px solid #ff3e6c;transform:rotate(15deg);text-transform:uppercase;" class="__sw_lbl_cut">BYE</div>';
 
-    setTimeout(function(){ loadImages(card, user.pk || user.id); }, 80);
-    setTimeout(function(){ loadProfile(card, user.username); }, 80);
+    setTimeout(function(){ loadDetails(card, user); }, 50);
     return card;
   }
 
-  function loadImages(card, pk){
-    if(!pk) return;
-    fetch('https://www.instagram.com/api/v1/feed/user/'+pk+'/?count=6', {
-      credentials:'include',
-      headers:{'X-CSRFToken':getCsrf(),'X-IG-App-ID':'936619743392459','X-Requested-With':'XMLHttpRequest'}
-    })
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      var slots = card.querySelectorAll('.__sw_imgslot');
-      (d.items||[]).slice(0,6).forEach(function(item, i){
-        if(!slots[i]) return;
-        var cands = item.image_versions2 && item.image_versions2.candidates;
-        var url = cands && cands.length ? cands[cands.length-1].url : null;
-        if(url){
-          var img = document.createElement('img');
-          img.src = url;
-          img.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;display:block;';
-          img.onerror = function(){ this.parentNode.innerHTML='\uD83D\uDCF7'; };
-          slots[i].innerHTML='';
-          slots[i].appendChild(img);
-        }
-      });
-    }).catch(function(){});
+  // -- Profile details (bio, follower count, recent posts) --
+  var detailCache = {};
+  var detailQueue = [];
+  var detailBusy = false;
+  var detailPausedUntil = 0;
+
+  function igHeaders(extra){
+    var h = {
+      'X-CSRFToken': getCsrf(),
+      'X-IG-App-ID': '936619743392459',
+      'X-Requested-With': 'XMLHttpRequest',
+      'Accept': '*/*'
+    };
+    try {
+      var claim = sessionStorage.getItem('www-claim-v2');
+      if(claim) h['X-IG-WWW-Claim'] = claim;
+    } catch(e){}
+    if(extra){ for(var k in extra){ h[k] = extra[k]; } }
+    return h;
   }
 
-  function loadProfile(card, username){
-    fetch('https://www.instagram.com/api/v1/users/web_profile_info/?username='+username, {
-      credentials:'include',
-      headers:{'X-CSRFToken':getCsrf(),'X-IG-App-ID':'936619743392459','X-Requested-With':'XMLHttpRequest'}
-    })
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-      var u = d.data && d.data.user;
-      if(!u) return;
-      var bioEl = card.querySelector('#__sw_bio_'+username.replace(/[^a-zA-Z0-9_]/g,'_'));
-      // fallback selector if id has special chars
-      if(!bioEl) bioEl = card.querySelector('[id^="__sw_bio_"]');
-      if(bioEl){
-        bioEl.textContent = u.biography || '';
-        bioEl.style.color = '#9090a8';
+  function igGet(url){
+    return fetch(url, {credentials:'include', headers: igHeaders()}).then(function(r){
+      if(!r.ok){
+        var err = new Error('HTTP ' + r.status);
+        err.status = r.status;
+        throw err;
       }
-      // update follower count too
-      var metaEl = card.querySelector('.__sw_followers');
-      if(metaEl && u.edge_followed_by){
-        var count = u.edge_followed_by.count;
-        var str = count >= 1000000 ? (count/1000000).toFixed(1)+'M followers'
-          : count >= 1000 ? (count/1000).toFixed(1)+'K followers'
-          : count+' followers';
-        metaEl.textContent = str;
+      return r.json().catch(function(){ throw new Error('bad response'); });
+    });
+  }
+
+  function showNotice(msg, ms){
+    var w = document.getElementById('__sw_ratewarn');
+    if(!w) return;
+    w.style.display = 'block';
+    w.textContent = msg;
+    if(ms){ setTimeout(function(){ if(w.textContent === msg) w.style.display = 'none'; }, ms); }
+  }
+
+  function fmtCount(n){
+    return n >= 1000000 ? (n/1000000).toFixed(1)+'M' : n >= 1000 ? (n/1000).toFixed(1)+'K' : String(n);
+  }
+
+  function fetchDetails(user){
+    var det = {bio:null, followers:null, imgs:[], isPrivate:false, imgsOk:false, err:null};
+    var pk = user.pk || user.id;
+
+    function stageProfile(){
+      return igGet('https://www.instagram.com/api/v1/users/web_profile_info/?username=' + encodeURIComponent(user.username)).then(function(d){
+        var u = d && d.data && d.data.user;
+        if(!u) throw new Error('empty response');
+        det.bio = u.biography || '';
+        if(u.edge_followed_by) det.followers = u.edge_followed_by.count;
+        det.isPrivate = !!u.is_private;
+        var tl = u.edge_owner_to_timeline_media;
+        if(tl){
+          det.imgsOk = true;
+          (tl.edges || []).slice(0,6).forEach(function(e){
+            var n = e.node || {};
+            var url = n.thumbnail_src || n.display_url;
+            if(url) det.imgs.push(url);
+          });
+        }
+        det.err = null;
+      });
+    }
+
+    function stageInfo(){
+      return igGet('https://www.instagram.com/api/v1/users/' + pk + '/info/').then(function(d){
+        var u = d && d.user;
+        if(!u) throw new Error('empty response');
+        det.bio = u.biography || '';
+        if(typeof u.follower_count === 'number') det.followers = u.follower_count;
+        det.isPrivate = !!u.is_private;
+        det.err = null;
+      });
+    }
+
+    function stageFeed(){
+      return igGet('https://www.instagram.com/api/v1/feed/user/' + pk + '/?count=6').then(function(d){
+        det.imgsOk = true;
+        (d.items || []).slice(0,6).forEach(function(item){
+          var m = (item.carousel_media && item.carousel_media[0]) || item;
+          var c = m.image_versions2 && m.image_versions2.candidates;
+          if(c && c.length) det.imgs.push(c[Math.min(1, c.length-1)].url);
+        });
+      });
+    }
+
+    return stageProfile()
+      .catch(function(e1){
+        if(e1.status === 429) throw e1;
+        det.err = e1.message;
+        return stageInfo().catch(function(e2){
+          if(e2.status === 429) throw e2;
+          det.err = (e2.message === e1.message) ? e1.message : (e1.message + ' / ' + e2.message);
+        });
+      })
+      .then(function(){
+        if(det.imgs.length || det.isPrivate) return;
+        return stageFeed().catch(function(e3){
+          if(e3.status === 429) throw e3;
+          if(!det.err) det.err = e3.message;
+        });
+      })
+      .then(function(){ return det; });
+  }
+
+  function applyDetails(card, det){
+    var bioEl = card.querySelector('.__sw_bio');
+    if(bioEl){
+      if(det.bio !== null){
+        if(det.bio){
+          bioEl.textContent = det.bio;
+          bioEl.style.color = '#9090a8';
+        } else {
+          bioEl.innerHTML = '<span style="color:#3a3a4a;font-family:DM Mono,monospace;font-size:11px;">no bio</span>';
+        }
+      } else {
+        bioEl.innerHTML = '<span style="color:#a05060;font-family:DM Mono,monospace;font-size:11px;">bio unavailable (' + esc(det.err || 'error') + ')</span>';
       }
-    }).catch(function(){
-      var bioEl = card.querySelector('[id^="__sw_bio_"]');
-      if(bioEl) bioEl.textContent = '';
+    }
+    var metaEl = card.querySelector('.__sw_followers');
+    if(metaEl && det.followers !== null && det.followers !== undefined){
+      metaEl.textContent = fmtCount(det.followers) + ' followers';
+    }
+    var grid = card.querySelector('.__sw_grid');
+    if(!grid) return;
+    if(det.imgs.length){
+      var slots = grid.querySelectorAll('.__sw_imgslot');
+      det.imgs.slice(0,6).forEach(function(url, i){
+        if(!slots[i]) return;
+        var img = document.createElement('img');
+        img.style.cssText = 'width:100%;aspect-ratio:1;object-fit:cover;display:block;';
+        img.onerror = function(){ if(this.parentNode) this.parentNode.textContent = '\uD83D\uDCF7'; };
+        img.src = url;
+        slots[i].textContent = '';
+        slots[i].appendChild(img);
+      });
+    } else {
+      var note = det.isPrivate ? 'Private account' : (det.imgsOk ? 'No posts yet' : '');
+      if(note){
+        grid.innerHTML = '<div style="grid-column:1 / -1;padding:22px 0;text-align:center;background:#1a1a24;color:#6b6b80;font-family:DM Mono,monospace;font-size:11px;">' + note + '</div>';
+      }
+    }
+  }
+
+  function loadDetails(card, user){
+    var cached = detailCache[user.username];
+    if(cached){ applyDetails(card, cached); return; }
+    detailQueue.push({card:card, user:user});
+    pumpDetails();
+  }
+
+  function pumpDetails(){
+    if(detailBusy || !detailQueue.length) return;
+    var wait = detailPausedUntil - Date.now();
+    if(wait > 0){ setTimeout(pumpDetails, wait + 50); return; }
+    detailBusy = true;
+    // newest first: the card on top was queued last and matters most
+    var job = detailQueue.pop();
+    if(!document.body.contains(job.card)){ detailBusy = false; pumpDetails(); return; }
+    var hit = detailCache[job.user.username];
+    if(hit){ applyDetails(job.card, hit); detailBusy = false; pumpDetails(); return; }
+    fetchDetails(job.user).then(function(det){
+      detailCache[job.user.username] = det;
+      applyDetails(job.card, det);
+    }).catch(function(e){
+      if(e && e.status === 429){
+        detailPausedUntil = Date.now() + 30000;
+        detailQueue.push(job);
+        showNotice('Instagram is rate limiting profile lookups -- pausing 30s...', 30000);
+      } else {
+        applyDetails(job.card, {bio:null, followers:null, imgs:[], isPrivate:false, imgsOk:false, err:(e && e.message) || 'error'});
+      }
+    }).then(function(){
+      setTimeout(function(){ detailBusy = false; pumpDetails(); }, 350);
     });
   }
 
@@ -541,7 +665,9 @@ function swiperInit(){
 
   function triggerSwipe(dir){
     var area=document.getElementById('__sw_cardarea');
-    var top=area.querySelector('[style*="z-index:2"]');
+    // the top card is always the last card in the area (the background card is added first)
+    var cards=area.querySelectorAll('[data-username]');
+    var top=cards.length ? cards[cards.length-1] : null;
     if(top) doSwipe(top,dir);
   }
 
@@ -601,7 +727,29 @@ function swiperInit(){
     currentIdx=last.idx; updateStats(); renderCurrent();
   }
 
+  var unfollowFailStreak = 0;
+  var unfollowHalted = false;
+
+  function unfollowFailed(item, e){
+    // The unfollow did not go through: forget the decision so this account shows up again
+    removeDecision(item.username);
+    stats.cut = Math.max(0, stats.cut - 1);
+    updateTotalCounter();
+    updateStats();
+    unfollowFailStreak++;
+    var why = (e && e.message) || 'error';
+    if(unfollowFailStreak >= 3 && !unfollowHalted){
+      unfollowHalted = true;
+      while(unfollowQueue.length){ removeDecision(unfollowQueue.shift().username); stats.cut = Math.max(0, stats.cut - 1); }
+      updateStats();
+      showNotice('Unfollows are FAILING (' + why + '). Stopped. Close Swiper and check Instagram. Nothing was saved as unfollowed.');
+    } else if(!unfollowHalted){
+      showNotice('Could not unfollow @' + item.username + ' (' + why + ').', 8000);
+    }
+  }
+
   function queueUnfollow(pk, username){
+    if(unfollowHalted){ unfollowFailed({pk:pk, username:username}, new Error('stopped after repeated failures')); return; }
     unfollowQueue.push({pk:pk,username:username});
     if(!processingQueue) processQueue();
   }
@@ -625,9 +773,17 @@ function swiperInit(){
       lastUnfollowTime=Date.now();
       fetch('https://www.instagram.com/api/v1/friendships/destroy/'+item.pk+'/', {
         method:'POST', credentials:'include',
-        headers:{'X-CSRFToken':getCsrf(),'X-IG-App-ID':'936619743392459','Content-Type':'application/x-www-form-urlencoded','X-Requested-With':'XMLHttpRequest'},
+        headers: igHeaders({'Content-Type':'application/x-www-form-urlencoded'}),
         body:'user_id='+item.pk
-      }).catch(function(){}).finally(function(){ processQueue(); });
+      }).then(function(r){
+        if(!r.ok){ throw new Error('HTTP ' + r.status); }
+        return r.json().catch(function(){ return {}; });
+      }).then(function(d){
+        if(d && d.status && d.status !== 'ok'){ throw new Error(d.message || d.status); }
+        unfollowFailStreak = 0;
+      }).catch(function(e){
+        unfollowFailed(item, e);
+      }).then(function(){ processQueue(); });
     }, delay);
   }
 
